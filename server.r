@@ -46,7 +46,7 @@ server <- function(input, output, session){
           class = 'questionDiv'
         )
       }
-      else if(q$Type[i]=='open-num'){
+      else if(q$Type[i]=='numeric'){
         qList[[i]] <- div(
           numericInput(
             inputId = paste0(moduleName, i),
@@ -59,7 +59,7 @@ server <- function(input, output, session){
           class = 'questionDiv field'
         )
       }
-      else if(q$Type[i]=='open-char'){
+      else if(q$Type[i]=='string'){
         qList[[i]] <- div(
           textInput(
             inputId = paste0(moduleName, i),
@@ -116,7 +116,7 @@ server <- function(input, output, session){
             column(width = 3),
             column(
               width = 6,
-              do.call(div, questionsDivList(module))
+              questionsDivList(module)
             ),
             column(width = 3)
           )
@@ -125,5 +125,41 @@ server <- function(input, output, session){
     )
     do.call(tabItems, tabItemList)
   })
+  # output$mainBody <- renderUI({
+  #   tabItemList <- list()
+  #   for (i in length(modules)) {
+  #     if(i!=length(modules)){
+  #       tabItemList[[i]] <- tabItem(
+  #         tabName = str_replace_all(modules[i], pattern = ' ', replacement = '_'),
+  #         fluidRow(
+  #           column(width = 3),
+  #           column(
+  #             width = 6,
+  #             questionsDivList(modules[i])
+  #           ),
+  #           column(width = 3)
+  #         )
+  #       )
+  #     }
+  #     else {
+  #       tabItemList[[i]] <- tabItem(
+  #         tabName = str_replace_all(modules[i], pattern = ' ', replacement = '_'),
+  #         fluidRow(
+  #           column(width = 3),
+  #           column(
+  #             width = 6,
+  #             questionsDivList(modules[i]),
+  #             actionBttn(
+  #               inputId = 'submit',
+  #               label = 'SUBMIT'
+  #             )
+  #           ),
+  #           column(width = 3)
+  #         )
+  #       )
+  #     }
+  #   }
+  #   do.call(tabItems, tabItemList)
+  # })
   
 }
