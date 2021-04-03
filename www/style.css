@@ -1,4 +1,4 @@
-.questionDiv{
+.questionDiv {
     padding: 20px;
     border-radius: 5px;
     border: 2px solid #3c8dbc;
@@ -6,13 +6,40 @@
     margin: 10px 0;
 }
 
-.questionDiv .control-label{
+.questionDiv .control-label {
     font-size: 20px;
     font-weight: normal;
     margin-bottom: 20px
 }
 
-.field input{
+.field input {
+    width: 300px;
+    border-radius: 5px;
+    border-color: #94aebf;
+}
+
+.field input:focus {
+    width: 300px;
+    border-radius: 5px;
+    border-color: #3c8dbc;
+    border-width: 1.5px;
+}
+
+.questionDiv {
+    padding: 20px;
+    border-radius: 5px;
+    border: 2px solid #3c8dbc;
+    background-color: white;
+    margin: 10px 0;
+}
+
+.questionDiv .control-label {
+    font-size: 20px;
+    font-weight: normal;
+    margin-bottom: 20px
+}
+
+.field input {
     width: 300px;
     border-radius: 5px;
     border-color: #94aebf;
@@ -22,4 +49,20 @@
     border-radius: 5px;
     border-color: #3c8dbc;
     border-width: 1.5px;
+}
+
+.submitDiv {
+    position: relative;
+}
+
+#submit {
+    position: absolute;
+    right: 0;
+}
+
+#submitAnother {
+    padding: 10px 15px;
+    margin: 20px 23%;
+    background-color: #3c8dbc;
+    border: none;
 }

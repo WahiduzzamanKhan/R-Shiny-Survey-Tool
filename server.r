@@ -5,6 +5,9 @@ library(shinyWidgets)
 library(readxl)
 library(stringr)
 library(shinyTime)
+library(tidyr)
+library(dplyr)
+library(DT)
 
 server <- function(input, output, session){
   
@@ -14,20 +17,8 @@ server <- function(input, output, session){
   # creating vector of module names
   modules <- unique(rawQues$Module)
   
-  # creating the sidebar menu
-  output$sidebar <- renderMenu({
-    sidebarMenu(
-      lapply(modules, function(module){
-        menuItem(
-          text = module,
-          tabName = str_replace_all(module, pattern = ' ', replacement = '_')
-        )
-      })
-    )
-  })
-  
   # function to create a list of divs for each question in a module
-  questionsDivList <- function(moduleName){
+  questionsDivList <- function(moduleName, last = modules[length(modules)]){
     q <- rawQues[rawQues$Module==moduleName,]
     qList <- list()
     for (i in 1:nrow(q)){
@@ -103,6 +94,17 @@ server <- function(input, output, session){
         )
       }
     }
+    if(moduleName==last){
+      qList[[nrow(q)+1]] <- div(
+        actionBttn(
+          inputId = "submit",
+          label = "Submit",
+          style = "jelly", 
+          color = "primary"
+        ),
+        class = 'submitDiv'
+      )
+    }
     return(qList)
   }
   
@@ -123,43 +125,86 @@ server <- function(input, output, session){
         )
       }
     )
+    
+    tabItemList[[length(tabItemList)+1]] <- tabItem(
+      tabName = 'results',
+      DTOutput('datatable')
+    )
+    
     do.call(tabItems, tabItemList)
   })
-  # output$mainBody <- renderUI({
-  #   tabItemList <- list()
-  #   for (i in length(modules)) {
-  #     if(i!=length(modules)){
-  #       tabItemList[[i]] <- tabItem(
-  #         tabName = str_replace_all(modules[i], pattern = ' ', replacement = '_'),
-  #         fluidRow(
-  #           column(width = 3),
-  #           column(
-  #             width = 6,
-  #             questionsDivList(modules[i])
-  #           ),
-  #           column(width = 3)
-  #         )
-  #       )
-  #     }
-  #     else {
-  #       tabItemList[[i]] <- tabItem(
-  #         tabName = str_replace_all(modules[i], pattern = ' ', replacement = '_'),
-  #         fluidRow(
-  #           column(width = 3),
-  #           column(
-  #             width = 6,
-  #             questionsDivList(modules[i]),
-  #             actionBttn(
-  #               inputId = 'submit',
-  #               label = 'SUBMIT'
-  #             )
-  #           ),
-  #           column(width = 3)
-  #         )
-  #       )
-  #     }
-  #   }
-  #   do.call(tabItems, tabItemList)
-  # })
+  
+  # creating the sidebar menu
+  output$sidebar <- renderMenu({
+    sidebarMenu(
+      lapply(modules, function(module){
+        menuItem(
+          text = module,
+          tabName = str_replace_all(module, pattern = ' ', replacement = '_')
+        )
+      })
+    )
+  })
+  
+  varNames <- as.character()
+  for(module in modules){
+    for(i in 1:length(which(rawQues$Module==module))){
+      varNames <- append(varNames, paste0(module, i))
+    }
+  }
+  newData <- data.frame(names = varNames, value = NA) %>% spread(key = names, value = value)
+  newData <- newData[-1,]
+  
+  if(file.exists("data.csv")==T) {
+    older <- read.csv("data.csv", header = T, sep = ',')
+  }else {
+    write.csv(newData, file = "data.csv", row.names=F)
+    older <- read.csv("data.csv", header = T, sep = ',')
+  }
+  
+  observeEvent(
+    input$submit,
+    {
+      for(name in varNames){
+        newData[1, name] <- ifelse(is.null(input[[name]]), NA, input[[name]])
+      }
+      
+      older[nrow(older)+1,] <- newData[1,]
+      write.csv(older, file = 'data.csv', row.names = F)
+      output$datatable <- renderDT(
+        datatable(
+          data = newData,
+          style = 'bootstrap',
+          class = 'compact stripe row-border hover',
+          filter = 'none',
+          selection = 'single',
+          options = list(
+            ordering = TRUE,
+            info = TRUE,
+            bLengthChange = FALSE,
+            searching = TRUE
+          ),
+          extensions = list('Responsive'=NULL),
+          width = '100%'
+        )
+      )
+      
+      # creating the sidebar menu
+      output$sidebar <- renderMenu({
+        sidebarMenu(
+          menuItem(
+            text = 'Results',
+            tabName = 'results'
+          ),
+          HTML(
+            "
+            <button id='submitAnother' class='action-btn'>Submit another</button>
+            "
+          )
+        )
+      })
+      
+    }
+  )
   
 }
