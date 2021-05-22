@@ -7,14 +7,12 @@ library(stringr)
 library(tidyr)
 library(dplyr)
 library(DT)
+library(shinyjs)
 
 # function to create a custom time input
 timeInput <- function(inputId, label, time=NULL, min = NULL, max = NULL){
   tagList(
-    tags$head(tags$script(
-      paste0("$(document).on('shiny:connected', function() {", "Shiny.onInputChange('", inputId, "', String(document.getElementById('", inputId, "').value));",  "$(document).on('input', 'input#", inputId, "',function(){var time = String(document.getElementById('", inputId, "').value);Shiny.onInputChange('", inputId, "', time);});});")
-    )),
-    HTML(paste0("<label for='",inputId,"'>", label, "</label>")),
+    HTML(paste0("<label for='",inputId,"'class = 'timeInputLabel'>", label, "</label><br/>")),
     tags$input(
       type = "time",
       id = inputId,

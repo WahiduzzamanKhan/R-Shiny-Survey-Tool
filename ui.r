@@ -13,6 +13,7 @@ ui <- dashboardPage(
   # start main body
   dashboardBody(
     tags$link(href='style.css', rel='stylesheet'),
+    useShinyjs(),
     HTML(
       "
       <script>

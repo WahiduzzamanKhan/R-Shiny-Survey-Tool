@@ -125,7 +125,7 @@ server <- function(input, output, session){
         column(
           offset = 2,
           width = 8,
-          h2('Newly added data'),
+          h2('New submissions'),
           DTOutput('newDatatable')
         )
       ),
@@ -133,7 +133,7 @@ server <- function(input, output, session){
         column(
           offset = 2,
           width = 8,
-          h2('Previously saved data'),
+          h2('All submissions'),
           DTOutput('OldDatatable')
         )
       )
@@ -218,8 +218,17 @@ server <- function(input, output, session){
     input$submit,
     {
       row <- nrow(newData)+1
-      for(name in varNames){
-        newData[row, name] <- ifelse(is.null(input[[name]]), NA, input[[name]])
+      for(i in 1:length(varNames)){
+        if(types[i]=="date") {
+          newData[row, varNames[i]] <- ifelse(is.null(input[[varNames[i]]]), NA, as.character(format(input[[varNames[i]]], "%d-%m-%Y")))
+        } else if(types[i]=="time") {
+          runjs(
+            paste0("var time = String(document.getElementById('",varNames[i],"').value);Shiny.onInputChange('timeOf",varNames[i],"', time);")
+          )
+          newData[row, varNames[i]] <- ifelse(is.null(input[[paste0("timeOf", varNames[i])]]), NA, as.character(format(strptime(input[[paste0("timeOf", varNames[i])]], format = "%H:%M"), "%I:%M %p")))
+        } else {
+          newData[row, varNames[i]] <- ifelse(is.null(input[[varNames[i]]]), NA, input[[varNames[i]]])
+        }
       }
       
       older$data[nrow(older$data)+1,] <- newData[1,]
@@ -261,6 +270,7 @@ server <- function(input, output, session){
         )
       })
       
+      reset(id = "mainBody")
     }
   )
   
