@@ -1,14 +1,3 @@
-# loading packages
-library(shiny)
-library(shinydashboard)
-library(shinyWidgets)
-library(readxl)
-library(stringr)
-library(shinyTime)
-library(tidyr)
-library(dplyr)
-library(DT)
-
 server <- function(input, output, session){
   
   # reading the questionnaire file
@@ -16,6 +5,7 @@ server <- function(input, output, session){
   
   # creating vector of module names
   modules <- unique(rawQues$Module)
+  types <- rawQues$Type
   
   # function to create a list of divs for each question in a module
   questionsDivList <- function(moduleName, last = modules[length(modules)]){
@@ -72,33 +62,36 @@ server <- function(input, output, session){
           class = 'questionDiv field'
         )
       }
-      else if(q$Type[i]=='date-range'){
+      else if(q$Type[i]=='time'){
         qList[[i]] <- div(
-          dateRangeInput(
+          timeInput(
             inputId = paste0(moduleName, i),
             label = q$Question[i],
+            time = strsplit(q$Options[i], split = ',')[[1]][3],
             min = strsplit(q$Options[i], split = ',')[[1]][1],
             max = strsplit(q$Options[i], split = ',')[[1]][2]
           ),
           class = 'questionDiv field'
         )
       }
-      else if(q$Type[i]=='time'){
-        qList[[i]] <- div(
-          timeInput(
-            inputId = paste0(moduleName, i),
-            label = q$Question[i],
-            value = Sys.time()
-          ),
-          class = 'questionDiv field'
-        )
-      }
     }
+    
     if(moduleName==last){
       qList[[nrow(q)+1]] <- div(
         actionBttn(
           inputId = "submit",
           label = "Submit",
+          style = "jelly", 
+          color = "primary"
+        ),
+        class = 'submitDiv'
+      )
+    }
+    else{
+      qList[[nrow(q)+1]] <- div(
+        actionBttn(
+          inputId = "nextTab",
+          label = "Next",
           style = "jelly", 
           color = "primary"
         ),
@@ -128,7 +121,22 @@ server <- function(input, output, session){
     
     tabItemList[[length(tabItemList)+1]] <- tabItem(
       tabName = 'results',
-      DTOutput('datatable')
+      fluidRow(
+        column(
+          offset = 2,
+          width = 8,
+          h2('Newly added data'),
+          DTOutput('newDatatable')
+        )
+      ),
+      fluidRow(
+        column(
+          offset = 2,
+          width = 8,
+          h2('Previously saved data'),
+          DTOutput('OldDatatable')
+        )
+      )
     )
     
     do.call(tabItems, tabItemList)
@@ -136,15 +144,23 @@ server <- function(input, output, session){
   
   # creating the sidebar menu
   output$sidebar <- renderMenu({
+    menuItems <- lapply(modules, function(module){
+      menuItem(
+        text = module,
+        tabName = str_replace_all(module, pattern = ' ', replacement = '_')
+      )
+    })
+    menuItems[[length(menuItems)+1]] <- menuItem(
+      text = 'Results',
+      tabName = 'results'
+    )
     sidebarMenu(
-      lapply(modules, function(module){
-        menuItem(
-          text = module,
-          tabName = str_replace_all(module, pattern = ' ', replacement = '_')
-        )
-      })
+      id = 'sidebar',
+      menuItems
     )
   })
+  
+  tabNames = str_replace_all(modules, pattern = ' ', replacement = '_')
   
   varNames <- as.character()
   for(module in modules){
@@ -156,22 +172,62 @@ server <- function(input, output, session){
   newData <- newData[-1,]
   
   if(file.exists("data.csv")==T) {
-    older <- read.csv("data.csv", header = T, sep = ',')
+    older <- reactiveValues(data = read.csv("data.csv", header = T, sep = ','))
   }else {
     write.csv(newData, file = "data.csv", row.names=F)
-    older <- read.csv("data.csv", header = T, sep = ',')
+    older <- reactiveValues(data = read.csv("data.csv", header = T, sep = ','))
   }
+  
+  output$newDatatable <- renderDT(
+    datatable(
+      data = newData,
+      style = 'bootstrap',
+      class = 'compact stripe row-border hover',
+      filter = 'none',
+      selection = 'single',
+      options = list(
+        ordering = TRUE,
+        info = TRUE,
+        bLengthChange = FALSE,
+        searching = TRUE
+      ),
+      extensions = list('Responsive'=NULL),
+      width = '100%'
+    )
+  )
+  
+  output$OldDatatable <- renderDT(
+    datatable(
+      data = older$data,
+      style = 'bootstrap',
+      class = 'compact stripe row-border hover',
+      filter = 'none',
+      selection = 'single',
+      options = list(
+        ordering = TRUE,
+        info = TRUE,
+        bLengthChange = FALSE,
+        searching = TRUE
+      ),
+      extensions = list('Responsive'=NULL),
+      width = '100%'
+    )
+  )
   
   observeEvent(
     input$submit,
     {
+      row <- nrow(newData)+1
       for(name in varNames){
-        newData[1, name] <- ifelse(is.null(input[[name]]), NA, input[[name]])
+        newData[row, name] <- ifelse(is.null(input[[name]]), NA, input[[name]])
       }
       
-      older[nrow(older)+1,] <- newData[1,]
-      write.csv(older, file = 'data.csv', row.names = F)
-      output$datatable <- renderDT(
+      older$data[nrow(older$data)+1,] <- newData[1,]
+      write.csv(older$data, file = 'data.csv', row.names = F)
+      
+      updateTabItems(session = session, inputId = 'sidebar', selected = 'results')
+      
+      output$newDatatable <- renderDT(
         datatable(
           data = newData,
           style = 'bootstrap',
@@ -192,18 +248,60 @@ server <- function(input, output, session){
       # creating the sidebar menu
       output$sidebar <- renderMenu({
         sidebarMenu(
+          id = 'sidebar',
           menuItem(
             text = 'Results',
             tabName = 'results'
           ),
           HTML(
             "
-            <button id='submitAnother' class='action-btn'>Submit another</button>
+            <button class='action-button' id='submitAnother'>Submit Another</button>
             "
           )
         )
       })
       
+    }
+  )
+  
+  observeEvent(
+    input$submitAnother,
+    {
+      output$sidebar <- renderMenu({
+        menuItems <- lapply(modules, function(module){
+          menuItem(
+            text = module,
+            tabName = str_replace_all(module, pattern = ' ', replacement = '_')
+          )
+        })
+        menuItems[[length(menuItems)+1]] <- menuItem(
+          text = 'Results',
+          tabName = 'results'
+        )
+        sidebarMenu(
+          id = 'sidebar',
+          menuItems
+        )
+      })
+    }
+  )
+  
+  # get a vector of all the change_module buttons
+  # this is used to define one observeEvent for all of them
+  next_module_bttns <- function(){
+    bttns <- as.character()
+    for(module in modules){
+      current_bttn <- paste0("input$next_module_", make.names(module))
+      bttns <- append(bttns, eval(parse(text = current_bttn)))
+    }
+    return(bttns)
+  }
+  
+  observeEvent(
+    input$js.button_clicked,
+    {
+      index <- which(tabNames==input$sidebar)
+      updateTabItems(session = session, inputId = 'sidebar', selected = tabNames[index+1])
     }
   )
   

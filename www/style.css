@@ -55,7 +55,7 @@
     position: relative;
 }
 
-#submit {
+#submit, #nextTab {
     position: absolute;
     right: 0;
 }
